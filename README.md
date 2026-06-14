@@ -14,3 +14,8 @@ git push -u origin main
 git remote add origin https://github.com/Dhruvi-45/data_ai.git
 git branch -M main
 git push -u origin main
+
+git status
+git add .
+git commit -m "Your commit message"
+git push
