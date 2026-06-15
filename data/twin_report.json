@@ -1,0 +1,135 @@
+[
+  {
+    "keep": "CAND_0000093",
+    "remove": "CAND_0000009",
+    "total_score": 0.855,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.777
+  },
+  {
+    "keep": "CAND_0000160",
+    "remove": "CAND_0000014",
+    "total_score": 0.851,
+    "summary_similarity": 0.858,
+    "career_similarity": 0.847
+  },
+  {
+    "keep": "CAND_0000160",
+    "remove": "CAND_0000077",
+    "total_score": 0.864,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.791
+  },
+  {
+    "keep": "CAND_0000160",
+    "remove": "CAND_0000130",
+    "total_score": 0.882,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.818
+  },
+  {
+    "keep": "CAND_0000025",
+    "remove": "CAND_0000048",
+    "total_score": 0.905,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.854
+  },
+  {
+    "keep": "CAND_0000026",
+    "remove": "CAND_0000069",
+    "total_score": 0.854,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.775
+  },
+  {
+    "keep": "CAND_0000192",
+    "remove": "CAND_0000029",
+    "total_score": 0.88,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.815
+  },
+  {
+    "keep": "CAND_0000199",
+    "remove": "CAND_0000030",
+    "total_score": 0.878,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.812
+  },
+  {
+    "keep": "CAND_0000139",
+    "remove": "CAND_0000033",
+    "total_score": 0.885,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.823
+  },
+  {
+    "keep": "CAND_0000103",
+    "remove": "CAND_0000037",
+    "total_score": 0.932,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.896
+  },
+  {
+    "keep": "CAND_0000169",
+    "remove": "CAND_0000045",
+    "total_score": 0.858,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.781
+  },
+  {
+    "keep": "CAND_0000199",
+    "remove": "CAND_0000138",
+    "total_score": 0.859,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.784
+  },
+  {
+    "keep": "CAND_0000179",
+    "remove": "CAND_0000127",
+    "total_score": 0.86,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.785
+  },
+  {
+    "keep": "CAND_0000157",
+    "remove": "CAND_0000151",
+    "total_score": 0.869,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.798
+  },
+  {
+    "keep": "CAND_0000125",
+    "remove": "CAND_0000101",
+    "total_score": 0.884,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.822
+  },
+  {
+    "keep": "CAND_0000213",
+    "remove": "CAND_0000104",
+    "total_score": 0.864,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.791
+  },
+  {
+    "keep": "CAND_0000111",
+    "remove": "CAND_0000125",
+    "total_score": 0.854,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.776
+  },
+  {
+    "keep": "CAND_0000147",
+    "remove": "CAND_0000132",
+    "total_score": 0.868,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.798
+  },
+  {
+    "keep": "CAND_0000169",
+    "remove": "CAND_0000163",
+    "total_score": 0.855,
+    "summary_similarity": 1.0,
+    "career_similarity": 0.777
+  }
+]
