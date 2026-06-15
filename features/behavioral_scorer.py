@@ -1,15 +1,38 @@
+import gzip
 import json
 import re
 from collections import defaultdict
 from difflib import SequenceMatcher
 
+# ─────────────────────────────────────────
+# STEP 1: Load directly from .gz file
+# No need to unzip manually!
+# ─────────────────────────────────────────
 def load_jsonl(path):
     candidates = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
+    skipped = 0
+
+    # Handle both .gz and plain .jsonl files
+    if path.endswith(".gz"):
+        open_func = gzip.open
+        mode = "rt"               # rt = read text mode for gzip
+    else:
+        open_func = open
+        mode = "r"
+
+    with open_func(path, mode, encoding="utf-8") as f:
+        for line_num, line in enumerate(f, 1):
             line = line.strip()
-            if line:
+            if not line:
+                continue
+            try:
                 candidates.append(json.loads(line))
+            except json.JSONDecodeError as e:
+                skipped += 1
+                print(f"⚠️  Skipping line {line_num} — JSON error: {e}")
+
+    print(f"✅ Loaded {len(candidates)} candidates "
+          f"({skipped} bad lines skipped)\n")
     return candidates
 
 def normalize_text(text):
@@ -22,7 +45,7 @@ def get_description_fingerprint(candidate):
     """
     PASS 1: Hash ALL job descriptions sorted and joined.
     If two candidates share the same description blob → definite twins.
-    This is fast (exact match) and catches the majority of twins in your data.
+    Fast O(n) — catches majority of twins instantly.
     """
     descriptions = sorted([
         normalize_text(job.get("description", ""))
@@ -36,41 +59,30 @@ def text_similarity(a, b):
 
 def compute_similarity_score(c1, c2):
     """
-    PASS 2: For candidates not caught by Pass 1,
-    use weighted fuzzy similarity score.
+    PASS 2: Filter ONLY on:
+    - Summary text similarity    → 35% weight
+    - Job description similarity → 65% weight (most important)
     """
     # Summary similarity (35%)
     s1 = c1["profile"].get("summary", "")
     s2 = c2["profile"].get("summary", "")
     summary_sim = text_similarity(s1, s2)
 
-    # Career description blob similarity (40%)
+    # Career description blob similarity (65%)
     desc1 = " ".join(sorted([
-        normalize_text(j.get("description",""))
-        for j in c1.get("career_history",[])
+        normalize_text(j.get("description", ""))
+        for j in c1.get("career_history", [])
     ]))
     desc2 = " ".join(sorted([
-        normalize_text(j.get("description",""))
-        for j in c2.get("career_history",[])
+        normalize_text(j.get("description", ""))
+        for j in c2.get("career_history", [])
     ]))
     career_sim = text_similarity(desc1, desc2)
 
-    # Skills Jaccard (15%)
-    sk1 = set(s["name"].lower() for s in c1.get("skills", []))
-    sk2 = set(s["name"].lower() for s in c2.get("skills", []))
-    skills_sim = len(sk1 & sk2) / len(sk1 | sk2) if (sk1 | sk2) else 0
+    # Summary 35% + Career 65% = 100%
+    total = (summary_sim * 0.35) + (career_sim * 0.65)
 
-    # Education match (10%)
-    edu1 = set((e.get("institution","").lower(), e.get("degree","").lower())
-               for e in c1.get("education", []))
-    edu2 = set((e.get("institution","").lower(), e.get("degree","").lower())
-               for e in c2.get("education", []))
-    edu_sim = 1.0 if edu1 == edu2 else 0.0
-
-    total = (summary_sim * 0.35 + career_sim * 0.40 +
-             skills_sim * 0.15 + edu_sim * 0.10)
-
-    return total
+    return total, summary_sim, career_sim
 
 def best_in_group(group):
     """Keep candidate with highest profile completeness score"""
@@ -80,7 +92,6 @@ def remove_twins_two_pass(candidates, fuzzy_threshold=0.85):
 
     # ─────────────────────────────────────────
     # PASS 1: Fast exact description fingerprint
-    # Catches the bulk of twins in your dataset
     # ─────────────────────────────────────────
     print("=== PASS 1: Description Fingerprint (Fast) ===")
     desc_groups = defaultdict(list)
@@ -101,10 +112,15 @@ def remove_twins_two_pass(candidates, fuzzy_threshold=0.85):
     print(f"Remaining after Pass 1: {len(pass1_kept)}\n")
 
     # ─────────────────────────────────────────
-    # PASS 2: Fuzzy similarity on survivors
-    # Catches near-twins that slightly altered descriptions
+    # PASS 2: Summary + Job Description Only
+    # Summary  → 35%
+    # Job Desc → 65%
     # ─────────────────────────────────────────
-    print(f"=== PASS 2: Fuzzy Similarity (threshold={fuzzy_threshold}) ===")
+    print(f"=== PASS 2: Summary + Job Description Only "
+          f"(threshold={fuzzy_threshold}) ===")
+    print(f"  Summary similarity   → 35% of score")
+    print(f"  Job desc similarity  → 65% of score ← most important\n")
+
     n = len(pass1_kept)
     print(f"Comparing {n} candidates ({n*(n-1)//2} pairs)...")
 
@@ -119,7 +135,7 @@ def remove_twins_two_pass(candidates, fuzzy_threshold=0.85):
             if c1["candidate_id"] in to_remove:
                 continue
 
-            score = compute_similarity_score(c1, c2)
+            score, summary_sim, career_sim = compute_similarity_score(c1, c2)
 
             if score >= fuzzy_threshold:
                 id1 = c1["candidate_id"]
@@ -131,10 +147,18 @@ def remove_twins_two_pass(candidates, fuzzy_threshold=0.85):
                 remove_id = id2 if keep == id1 else id1
                 to_remove.add(remove_id)
 
-                twin_pairs.append({"keep": keep, "remove": remove_id,
-                                   "score": round(score, 3)})
-                print(f"Pass2 twin (score={score:.3f}): {id1} vs {id2} "
-                      f"→ keeping {keep}")
+                twin_pairs.append({
+                    "keep": keep,
+                    "remove": remove_id,
+                    "total_score": round(score, 3),
+                    "summary_similarity": round(summary_sim, 3),
+                    "career_similarity": round(career_sim, 3)
+                })
+
+                print(f"Twin found (total={score:.3f}) "
+                      f"[summary={summary_sim:.3f}, "
+                      f"career={career_sim:.3f}]: "
+                      f"{id1} vs {id2} → keeping {keep}")
 
     final_kept = [c for c in pass1_kept
                   if c["candidate_id"] not in to_remove]
@@ -150,16 +174,18 @@ def remove_twins_two_pass(candidates, fuzzy_threshold=0.85):
 
 
 # ─────────────────────────────────────────
-# --- Run ---  ✅ FIXED PATHS FOR COLAB
+# --- Run ---
+# Upload candidates.jsonl.gz to Colab
+# then run this
 # ─────────────────────────────────────────
-candidates = load_jsonl("candidates.jsonl")           # ✅ root level
+candidates = load_jsonl("candidates.jsonl.gz")   # ✅ load directly from .gz
 final, twin_pairs = remove_twins_two_pass(candidates, fuzzy_threshold=0.85)
 
-with open("candidates_no_twins.jsonl", "w", encoding="utf-8") as f:  # ✅ root level
+with open("candidates_no_twins.jsonl", "w", encoding="utf-8") as f:
     for c in final:
         f.write(json.dumps(c) + "\n")
 
-with open("twin_report.json", "w") as f:              # ✅ root level
+with open("twin_report.json", "w") as f:
     json.dump(twin_pairs, f, indent=2)
 
 print("\nDone. Saved candidates_no_twins.jsonl + twin_report.json")
