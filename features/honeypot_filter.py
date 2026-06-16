@@ -11,7 +11,10 @@ Reads a .gz file (one JSON candidate per line), applies two filters:
      non-technical business role (BA, marketing, HR, operations, etc.) AND
      who have no meaningful tech engineering career history.
 
-Outputs a clean JSON array to <input_stem>_filtered.json
+Outputs:
+  - <input_stem>_filtered.json   (JSON array of remaining candidates)
+  - <input_stem>_filtered.jsonl  (one JSON object per line of remaining candidates)
+  - <input_stem>_removed.jsonl   (one JSON object per line of removed candidates)
 """
 
 import gzip
@@ -207,20 +210,30 @@ def main():
         stem = gz_path.name.replace(".jsonl.gz", "").replace(".gz", "")
         out_path = gz_path.parent / f"{stem}_filtered.json"
 
+    # Derive additional output file paths based on requirements
+    out_path_jsonl = out_path.with_suffix(".jsonl")
+    removed_path_jsonl = out_path.parent / f"{out_path.stem.replace('_filtered', '')}_removed.jsonl"
+
     print(f"Loading candidates from: {gz_path}")
     candidates = load_candidates(gz_path)
     total_candidates = len(candidates)
     print(f"  Loaded {total_candidates} candidates")
 
     kept, removed = [], []
+    removed_objects = []  # To store the full candidate objects that got filtered out
+
     for c in candidates:
         keep, reason = should_keep(c)
         if keep:
             kept.append(c)
         else:
             removed.append((c.get("candidate_id", "?"), reason))
+            # Keep a copy of the candidate data and append the exact exclusion reason
+            rc = c.copy()
+            rc["exclusion_reason"] = reason
+            removed_objects.append(rc)
 
-    # Detailed itemized list of removals
+    # Detailed itemized list of removals (Maintained exactly as original)
     print(f"\n  Removed {len(removed)} candidates:")
     for cid, reason in removed:
         print(f"    ✗  {reason}")
@@ -241,10 +254,22 @@ def main():
     print(f"  Final remaining pool: {len(kept)} candidates.")
     print("="*50)
 
+    # 1. Write the clean JSON array file
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(kept, fh, indent=2, ensure_ascii=False)
+    print(f"\nOutput successfully written to (JSON Array): {out_path}")
 
-    print(f"\nOutput successfully written to: {out_path}")
+    # 2. Write the retained candidates to a JSONL file
+    with open(out_path_jsonl, "w", encoding="utf-8") as fh:
+        for candidate in kept:
+            fh.write(json.dumps(candidate, ensure_ascii=False) + "\n")
+    print(f"Output successfully written to (JSONL Retained): {out_path_jsonl}")
+
+    # 3. Write the removed candidates to a separate JSONL file
+    with open(removed_path_jsonl, "w", encoding="utf-8") as fh:
+        for candidate in removed_objects:
+            fh.write(json.dumps(candidate, ensure_ascii=False) + "\n")
+    print(f"Output successfully written to (JSONL Removed) : {removed_path_jsonl}")
 
 
 if __name__ == "__main__":
