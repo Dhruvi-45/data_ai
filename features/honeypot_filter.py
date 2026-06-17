@@ -1,276 +1,278 @@
 """
-Candidate Filtering Script
---------------------------
-Reads a .gz file (one JSON candidate per line), applies two filters:
+Google Colab Honeypot Filter
 
-  1. CONSULTING-ONLY FILTER — Remove candidates whose ENTIRE career has been
-     at consulting/body-shopping firms and who have never worked at a product
-     or non-consulting company.
-
-  2. NON-TECH ROLE FILTER — Remove candidates whose CURRENT role is a
-     non-technical business role (BA, marketing, HR, operations, etc.) AND
-     who have no meaningful tech engineering career history.
+Input:
+    kept_candidates.json
 
 Outputs:
-  - <input_stem>_filtered.json   (JSON array of remaining candidates)
-  - <input_stem>_filtered.jsonl  (one JSON object per line of remaining candidates)
-  - <input_stem>_removed.jsonl   (one JSON object per line of removed candidates)
+    filtered_candidates.json
+    honeypot_candidates.json
 """
 
-import gzip
 import json
-import re
-import sys
 from pathlib import Path
 
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+# ============================================================================
+# Detection helpers
+# ============================================================================
 
-# Firms considered "consulting / body-shopping" for the consulting-only check.
-# A candidate is only filtered if ALL their jobs are at firms in this set.
-CONSULTING_FIRMS = {
-    "tcs", "tata consultancy services",
-    "infosys",
-    "wipro",
-    "accenture",
-    "cognizant", "cognizant technology solutions",
-    "capgemini",
-    "hcl", "hcl technologies",
-    "tech mahindra",
-    "mphasis",
-    "mindtree",
-    "hexaware",
-    "l&t infotech", "l&t technology services", "ltimindtree",
-    "niit technologies",
-    "patni",
-    "mastech",
-    "kpit",
-    "zensar",
-    "birlasoft",
-    "sonata software",
-}
+def check_inverted_salary(candidate):
+    flags = []
+    try:
+        sal = candidate["redrob_signals"]["expected_salary_range_inr_lpa"]
+        mn, mx = sal.get("min", 0), sal.get("max", 0)
 
-# Job titles that are considered NON-technical.
-# Candidates whose entire career (or current title) falls into these buckets
-# and who have no tech-engineering history will be removed.
-NON_TECH_TITLES = {
-    # Business / strategy
-    "business analyst", "business development", "management consultant",
-    "strategy consultant", "management trainee",
-    # Marketing
-    "marketing manager", "marketing executive", "digital marketing",
-    "content writer", "content marketing", "seo specialist", "copywriter",
-    "brand manager", "growth manager",
-    # Sales
-    "sales executive", "sales manager", "account executive",
-    "account manager", "business development executive",
-    # HR / People
-    "hr manager", "human resources", "hr executive", "recruiter",
-    "talent acquisition", "people operations",
-    # Finance / Accounting
-    "accountant", "finance manager", "financial analyst", "chartered accountant",
-    "accounts executive",
-    # Operations / Admin
-    "operations manager", "operations executive", "customer support",
-    "customer success", "customer service", "project manager",
-    "program manager", "delivery manager", "civil engineer",
-    "mechanical engineer", "graphic designer",
-}
+        if mn > mx:
+            flags.append(
+                f"INVERTED_SALARY: min={mn} LPA > max={mx} LPA"
+            )
 
-# Keywords that, if found in a job title, mark it as a TECH role.
-TECH_TITLE_KEYWORDS = {
-    "engineer", "developer", "architect", "programmer", "scientist",
-    "analyst",          # data analyst, ml analyst  – but NOT business analyst (handled separately)
-    "devops", "sre", "reliability",
-    "data", "machine learning", "ml", "ai ", "nlp", "cv",
-    "backend", "frontend", "full stack", "fullstack", "full-stack",
-    "cloud", "infrastructure", "platform", "security",
-    "qa", "quality assurance", "test automation",
-    "mobile", "android", "ios",
-    "blockchain", "embedded",
-    "research",
-}
+    except (KeyError, TypeError):
+        pass
+
+    return flags
 
 
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
+def check_education_overlap(candidate):
+    flags = []
 
-def normalise(text: str) -> str:
-    """Lower-case and strip extra whitespace."""
-    return re.sub(r"\s+", " ", text.strip().lower())
+    edu = candidate.get("education", [])
 
+    for i in range(len(edu)):
+        for j in range(i + 1, len(edu)):
 
-def company_is_consulting(company_name: str) -> bool:
-    name = normalise(company_name)
-    return any(cf in name for cf in CONSULTING_FIRMS)
+            e1 = edu[i]
+            e2 = edu[j]
 
+            s1 = e1.get("start_year", 0)
+            e1_end = e1.get("end_year", 0)
 
-def title_is_tech(title: str) -> bool:
-    t = normalise(title)
-    # Explicitly exclude "business analyst" even though it contains "analyst"
-    if "business analyst" in t:
-        return False
-    return any(kw in t for kw in TECH_TITLE_KEYWORDS)
+            s2 = e2.get("start_year", 0)
+            e2_end = e2.get("end_year", 0)
 
+            if s1 < e2_end and s2 < e1_end:
+                flags.append(
+                    f"EDU_OVERLAP: "
+                    f"{e1.get('degree','?')} ({s1}-{e1_end}) overlaps "
+                    f"{e2.get('degree','?')} ({s2}-{e2_end})"
+                )
 
-def title_is_non_tech(title: str) -> bool:
-    t = normalise(title)
-    return any(nt in t for nt in NON_TECH_TITLES)
-
-
-def has_any_non_consulting_experience(career: list) -> bool:
-    """
-    Returns True if the candidate has at least one job at a company that is
-    NOT in our consulting-firm list.
-    """
-    for job in career:
-        company = job.get("company", "")
-        if not company_is_consulting(company):
-            return True
-    return False
+    return flags
 
 
-def has_tech_engineering_history(career: list) -> bool:
-    """
-    Returns True if the candidate has at least one job whose title looks
-    like a tech/engineering role.
-    """
-    for job in career:
-        title = job.get("title", "")
-        if title_is_tech(title):
-            return True
-    return False
+_MECH_ENG_KEYWORDS = [
+    "solidworks",
+    "creo",
+    "dfma",
+    "dfm/",
+    "fea (ansys)",
+    "ansys",
+    "product subsystems",
+    "production tooling",
+    "prototype, production",
+    "hardware-development cadence",
+]
+
+_ENG_TITLE_FRAGMENTS = [
+    "engineer",
+    "mechanical",
+    "hardware"
+]
 
 
-# ---------------------------------------------------------------------------
-# Filter logic
-# ---------------------------------------------------------------------------
+def check_desc_title_mismatch(candidate):
+    flags = []
 
-def should_keep(candidate: dict) -> tuple[bool, str]:
-    """
-    Returns (keep: bool, reason: str).
-    """
-    profile = candidate.get("profile", {})
-    career = candidate.get("career_history", [])
-    current_title = normalise(profile.get("current_title", ""))
-    cid = candidate.get("candidate_id", "?")
+    for job in candidate.get("career_history", []):
 
-    # ── FILTER 1: Consulting-only careers ──────────────────────────────────
-    # Only remove if every single company they've worked at is a consulting firm.
-    if career and not has_any_non_consulting_experience(career):
-        return False, f"{cid}: pure consulting career"
+        desc = str(job.get("description", "")).lower()
+        title = str(job.get("title", "")).lower()
 
-    # ── FILTER 2: Non-tech current role with no engineering history ─────────
-    # Remove if:
-    #   a) current title is a non-tech role, AND
-    #   b) the candidate has no tech-engineering title anywhere in their history
-    if title_is_non_tech(current_title) and not has_tech_engineering_history(career):
-        return False, f"{cid}: non-tech role '{current_title}' with no engineering history"
+        has_mech = any(k in desc for k in _MECH_ENG_KEYWORDS)
+        is_eng = any(k in title for k in _ENG_TITLE_FRAGMENTS)
 
-    return True, ""
+        if has_mech and not is_eng:
+
+            flags.append(
+                f"DESC_TITLE_MISMATCH: "
+                f"{job.get('title','?')} at "
+                f"{job.get('company','?')}"
+            )
+
+            break
+
+    return flags
 
 
-# ---------------------------------------------------------------------------
-# I/O
-# ---------------------------------------------------------------------------
+def check_skill_exceeds_career(candidate):
+    flags = []
 
-def load_candidates(gz_path: Path) -> list[dict]:
-    candidates = []
-    with gzip.open(gz_path, "rt", encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                candidates.append(json.loads(line))
-            except json.JSONDecodeError as exc:
-                print(f"  [WARN] Skipping malformed line: {exc}", file=sys.stderr)
-    return candidates
+    career_months = sum(
+        j.get("duration_months", 0)
+        for j in candidate.get("career_history", [])
+    )
+
+    for skill in candidate.get("skills", []):
+
+        skill_months = skill.get("duration_months", 0)
+
+        if skill_months > career_months + 3:
+
+            flags.append(
+                f"SKILL_EXCEEDS_CAREER: "
+                f"{skill.get('name','?')} "
+                f"{skill_months} months > "
+                f"career {career_months} months"
+            )
+
+    return flags
 
 
-def main():
-    # Check if we are running in an interactive notebook or with dummy system flags
-    if len(sys.argv) < 2 or sys.argv[1].startswith('-f'):
-        # Fallback path pointing directly to your file from the sidebar
-        gz_path = Path("candidates.jsonl.gz")
+# ============================================================================
+# Classifier
+# ============================================================================
+
+ALL_CHECKS = [
+    check_inverted_salary,
+    check_education_overlap,
+    check_desc_title_mismatch,
+    check_skill_exceeds_career,
+]
+
+
+def classify_candidate(candidate):
+
+    all_flags = []
+
+    for check in ALL_CHECKS:
+        all_flags.extend(check(candidate))
+
+    return bool(all_flags), all_flags
+
+
+# ============================================================================
+# File Helpers
+# ============================================================================
+
+def load_candidates(filepath):
+
+    text = Path(filepath).read_text(
+        encoding="utf-8"
+    ).strip()
+
+    try:
+        data = json.loads(text)
+
+        if isinstance(data, list):
+            return data
+
+        return [data]
+
+    except json.JSONDecodeError:
+
+        return [
+            json.loads(line)
+            for line in text.splitlines()
+            if line.strip()
+        ]
+
+
+def save_json(data, filepath):
+
+    Path(filepath).write_text(
+        json.dumps(
+            data,
+            indent=2,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+
+# ============================================================================
+# Main
+# ============================================================================
+
+INPUT_FILE = "kept_candidates.json"
+
+CLEAN_OUTPUT = "filtered_candidates.json"
+HONEYPOT_OUTPUT = "honeypot_candidates.json"
+
+print("=" * 60)
+print("HONEYPOT FILTER")
+print("=" * 60)
+
+candidates = load_candidates(INPUT_FILE)
+
+print(f"Loaded {len(candidates)} candidates")
+
+clean_candidates = []
+honeypot_candidates = []
+
+for candidate in candidates:
+
+    is_honeypot, reasons = classify_candidate(candidate)
+
+    if is_honeypot:
+
+        candidate["_honeypot_reasons"] = reasons
+        honeypot_candidates.append(candidate)
+
     else:
-        gz_path = Path(sys.argv[1])
 
-    if not gz_path.exists():
-        print(f"Error: file not found — {gz_path}", file=sys.stderr)
-        sys.exit(1)
+        clean_candidates.append(candidate)
 
-    # Default output name: same stem, _filtered.json
-    if len(sys.argv) >= 3 and not sys.argv[2].startswith('-f'):
-        out_path = Path(sys.argv[2])
-    else:
-        stem = gz_path.name.replace(".jsonl.gz", "").replace(".gz", "")
-        out_path = gz_path.parent / f"{stem}_filtered.json"
+save_json(
+    clean_candidates,
+    CLEAN_OUTPUT
+)
 
-    # Derive additional output file paths based on requirements
-    out_path_jsonl = out_path.with_suffix(".jsonl")
-    removed_path_jsonl = out_path.parent / f"{out_path.stem.replace('_filtered', '')}_removed.jsonl"
+save_json(
+    honeypot_candidates,
+    HONEYPOT_OUTPUT
+)
 
-    print(f"Loading candidates from: {gz_path}")
-    candidates = load_candidates(gz_path)
-    total_candidates = len(candidates)
-    print(f"  Loaded {total_candidates} candidates")
+total = len(candidates)
+clean_count = len(clean_candidates)
+honeypot_count = len(honeypot_candidates)
 
-    kept, removed = [], []
-    removed_objects = []  # To store the full candidate objects that got filtered out
+honeypot_rate = (
+    honeypot_count / total * 100
+    if total else 0
+)
 
-    for c in candidates:
-        keep, reason = should_keep(c)
-        if keep:
-            kept.append(c)
-        else:
-            removed.append((c.get("candidate_id", "?"), reason))
-            # Keep a copy of the candidate data and append the exact exclusion reason
-            rc = c.copy()
-            rc["exclusion_reason"] = reason
-            removed_objects.append(rc)
+print("\nSUMMARY")
+print("-" * 60)
+print(f"Total Candidates : {total}")
+print(f"Filtered (Clean) : {clean_count}")
+print(f"Honeypots        : {honeypot_count}")
+print(f"Honeypot Rate    : {honeypot_rate:.2f}%")
+print("-" * 60)
 
-    # Detailed itemized list of removals (Maintained exactly as original)
-    print(f"\n  Removed {len(removed)} candidates:")
-    for cid, reason in removed:
-        print(f"    ✗  {reason}")
+print("\nFiles Generated:")
+print(f"✓ {CLEAN_OUTPUT}")
+print(f"✓ {HONEYPOT_OUTPUT}")
 
-    # New descriptive dynamic summary statements 
-    print("\n" + "="*50)
-    print("  FILTERING METRICS SUMMARY")
-    print("="*50)
-    print(f"  Removed {len(removed)} candidates out of {total_candidates} total candidates.")
-    
-    # Simple percentage visualization for readability 
-    if total_candidates > 0:
-        pct_removed = (len(removed) / total_candidates) * 100
-        pct_kept = (len(kept) / total_candidates) * 100
-        print(f"  ↳ Filtered out: {pct_removed:.1f}% of the dataset.")
-        print(f"  ↳ Retained:    {pct_kept:.1f}% of the dataset.")
-    
-    print(f"  Final remaining pool: {len(kept)} candidates.")
-    print("="*50)
+# Breakdown
+reason_counts = {}
 
-    # 1. Write the clean JSON array file
-    with open(out_path, "w", encoding="utf-8") as fh:
-        json.dump(kept, fh, indent=2, ensure_ascii=False)
-    print(f"\nOutput successfully written to (JSON Array): {out_path}")
+for c in honeypot_candidates:
 
-    # 2. Write the retained candidates to a JSONL file
-    with open(out_path_jsonl, "w", encoding="utf-8") as fh:
-        for candidate in kept:
-            fh.write(json.dumps(candidate, ensure_ascii=False) + "\n")
-    print(f"Output successfully written to (JSONL Retained): {out_path_jsonl}")
+    for r in c.get("_honeypot_reasons", []):
 
-    # 3. Write the removed candidates to a separate JSONL file
-    with open(removed_path_jsonl, "w", encoding="utf-8") as fh:
-        for candidate in removed_objects:
-            fh.write(json.dumps(candidate, ensure_ascii=False) + "\n")
-    print(f"Output successfully written to (JSONL Removed) : {removed_path_jsonl}")
+        key = r.split(":")[0]
 
+        reason_counts[key] = (
+            reason_counts.get(key, 0) + 1
+        )
 
-if __name__ == "__main__":
-    main()
+if reason_counts:
+
+    print("\nHoneypot Breakdown:")
+
+    for k, v in sorted(
+        reason_counts.items(),
+        key=lambda x: -x[1]
+    ):
+        print(f"{k}: {v}")

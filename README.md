@@ -17,7 +17,7 @@ git push -u origin main
 
 git status
 git add .
-git commit -m "Your commit message"
+git commit -m "removing honeypot data"
 git push
 
 
