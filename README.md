@@ -17,7 +17,7 @@ git push -u origin main
 
 git status
 git add .
-git commit -m "prun"
+git commit -m "embeddings"
 git push
 
 
