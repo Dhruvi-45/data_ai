@@ -1,2 +1,3 @@
 data/candidates.jsonl
 outputs/
+.env
