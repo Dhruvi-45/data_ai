@@ -9,13 +9,21 @@
 # ║    3. Combines into a composite score                                    ║
 # ║    4. Applies tiered re-ranking (different strictness per rank band)    ║
 # ║    5. Deduplicates and writes top100_final.csv                          ║
+# ║       with EXACTLY 4 columns: candidate_id, rank, score, reasoning      ║
+# ║                                                                          ║
+# ║  DETERMINISM FIX                                                        ║
+# ║  ────────────────────────────────────────────────────                    ║
+# ║  Every sort in this script uses a STABLE secondary key (candidate_id)   ║
+# ║  so re-running on the same top300_with_reasons.json input always        ║
+# ║  produces byte-identical output. Python's sort is stable, but ties on   ║
+# ║  floating-point composite scores were previously unordered — fixed by   ║
+# ║  always tie-breaking on candidate_id.                                   ║
 # ║                                                                          ║
 # ║  NO model loading. NO embedding. NO API calls. NO FAISS.                ║
 # ║  This is the script you run under the hackathon's 5-min/CPU constraint. ║
 # ║                                                                          ║
 # ║  HOW TO RUN:                                                            ║
 # ║    !python step2_score_and_export.py                                     ║
-# ║  (or just run this cell directly in Colab — no GPU needed)              ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
 import json, csv, time
@@ -51,18 +59,21 @@ SHIPPING_EVIDENCE = [
     "deployed to production", "shipped to production", "in production",
     "serving real users", "deployed to real users", "live in production",
     "production traffic", "production system", "production environment",
-    "at scale", "million users", "billion requests",
+    "million users", "billion requests",
     "reduced latency", "p99", "p95", "throughput", "qps", "rps",
-    "end-to-end", "owned the system", "led the development",
     "a/b test", "a/b testing", "online evaluation", "offline evaluation",
     "ndcg", "mrr", "precision@", "recall@", "evaluation framework",
     "ranking system", "retrieval system", "search system",
-    "recommendation system", "recommender", "recsys",
+    "recommendation system", "recommender system", "recsys",
     "hybrid retrieval", "dense retrieval", "bm25",
     "reranking", "re-ranking", "learning to rank",
-    "semantic search", "vector search", "embedding-based",
-    "candidate ranking", "job matching", "feedback loop",
+    "semantic search", "vector search", "embedding-based retrieval",
+    "candidate ranking system", "job matching system",
 ]
+# NOTE: removed generic phrases ("end-to-end", "led the development", "at scale",
+# "owned the system", "feedback loop") that previously leaked into non-technical
+# descriptions (e.g. HR process improvements). Every remaining phrase is specific
+# to ML/search/ranking system-building and unlikely to appear in HR/marketing text.
 
 RESEARCHER_SIGNALS = [
     "research scientist", "research intern", "postdoc", "post-doc",
@@ -94,6 +105,42 @@ PREFERRED_LOCATIONS = {
     "delhi", "gurugram", "gurgaon", "ncr", "chennai",
 }
 
+# Same technical-role gate as step 1 — defends against non-technical
+# candidates reaching this stage if step1's input file was ever edited
+# or merged with an un-gated source after the fact.
+NON_TECHNICAL_TITLE_SIGNALS = [
+    "hr manager", "human resources", "recruiter", "talent acquisition",
+    "marketing manager", "marketing executive", "content writer",
+    "sales manager", "sales executive", "account manager",
+    "business development", "customer success", "customer support",
+    "operations manager", "office manager", "administrative",
+    "finance manager", "accountant", "legal counsel", "paralegal",
+    "graphic designer", "social media", "brand manager",
+    "procurement", "supply chain manager", "logistics manager",
+]
+TECHNICAL_TITLE_SIGNALS = [
+    "software engineer", "ml engineer", "machine learning engineer",
+    "ai engineer", "data engineer", "platform engineer",
+    "backend engineer", "frontend engineer", "full stack engineer",
+    "devops engineer", "sre", "infrastructure engineer",
+    "nlp engineer", "search engineer", "ranking engineer",
+    "developer", "data scientist", "research scientist", "applied scientist",
+    "software architect", "solutions architect", "technical architect",
+    "programmer", "computer vision engineer",
+]
+
+# NOTE: explicitly NON-software engineering disciplines. Without this list,
+# the bare substring "engineer" would match "Civil Engineer" or "Mechanical
+# Engineer" — caught during testing on real sample data where these slipped
+# through the gate (e.g. CAND_0000045: Project Manager with a prior Civil
+# Engineer role would otherwise pass).
+NON_SOFTWARE_ENGINEER_TITLES = [
+    "civil engineer", "mechanical engineer", "electrical engineer",
+    "chemical engineer", "structural engineer", "industrial engineer",
+    "petroleum engineer", "mining engineer", "aerospace engineer",
+    "environmental engineer", "biomedical engineer", "agricultural engineer",
+]
+
 
 # ═══════════════════════════════════════════════════════════════
 #  HELPERS
@@ -112,13 +159,36 @@ def _days_ago(date_str: str) -> float:
     except Exception:
         return 9999.0
 
+def is_technical_candidate(c: dict) -> bool:
+    """
+    Same gate as step1 — defends against non-technical candidates reaching
+    this stage if step1's input file was ever edited or merged with an
+    un-gated source after the fact.
+    """
+    def _is_tech_title(title: str) -> bool:
+        t = title.lower()
+        if any(sig in t for sig in NON_SOFTWARE_ENGINEER_TITLES):
+            return False
+        if any(sig in t for sig in NON_TECHNICAL_TITLE_SIGNALS):
+            return False
+        return any(sig in t for sig in TECHNICAL_TITLE_SIGNALS)
+
+    p = c.get("profile", {})
+    if _is_tech_title(p.get("current_title") or ""):
+        return True
+    if c.get("redrob_signals", {}).get("skill_assessment_scores"):
+        return True
+    for job in c.get("career_history", []):
+        if _is_tech_title(job.get("title") or ""):
+            return True
+    return False
+
 
 # ═══════════════════════════════════════════════════════════════
 #  SCORING FUNCTIONS — pure Python, no model needed
 # ═══════════════════════════════════════════════════════════════
 
-def score_shipper(c: dict) -> tuple[float, str]:
-    """Evidence of shipping real production systems. Core JD requirement."""
+def score_shipper(c: dict) -> float:
     history = c.get("career_history", [])
     edu     = c.get("education", [])
     all_desc = " ".join(j.get("description", "") for j in history).lower()
@@ -141,15 +211,18 @@ def score_shipper(c: dict) -> tuple[float, str]:
     product_ratio = product_jobs / max(len(history), 1)
     product_bonus = product_ratio * 0.15
 
-    final = max(0.0, min(1.0, ship_raw * (1 - researcher_penalty) + product_bonus))
-    note  = f"phrases:{len(hits)},res_penalty:{researcher_penalty:.2f},product_ratio:{product_ratio:.2f}"
-    return final, note
+    return max(0.0, min(1.0, ship_raw * (1 - researcher_penalty) + product_bonus))
 
 
-def score_career(c: dict) -> tuple[float, str]:
-    """Right seniority band, right domain, right company type."""
+def score_career(c: dict) -> float:
     p       = c.get("profile", {})
     history = c.get("career_history", [])
+
+    # HARD GATE: non-technical candidates cap at 0.15 career score regardless
+    # of tenure/seniority/product-company status. This is what was missing
+    # before — domain mismatch must dominate, not just contribute 35% weight.
+    if not is_technical_candidate(c):
+        return 0.15
 
     yoe = float(p.get("years_of_experience", 0) or 0)
     if   5 <= yoe <= 9:   yoe_s = 1.0
@@ -176,12 +249,10 @@ def score_career(c: dict) -> tuple[float, str]:
     product_s = sum(1 for j in history if not _is_consulting(j.get("company",""))) / max(len(history), 1)
 
     final = yoe_s*0.30 + domain_s*0.35 + tenure_s*0.15 + product_s*0.20
-    note  = f"yoe:{yoe}({yoe_s:.2f}),domain:{domain_s:.2f},tenure:{avg_tenure:.0f}mo,product:{product_s:.2f}"
-    return max(0.0, min(1.0, final)), note
+    return max(0.0, min(1.0, final))
 
 
-def score_skill_depth(c: dict) -> tuple[float, str]:
-    """Depth over breadth. Penalises buzzword-only profiles (the keyword trap)."""
+def score_skill_depth(c: dict) -> float:
     skills        = c.get("skills", [])
     domain_depth  = 0.0
     buzzword_trap = 0
@@ -202,13 +273,15 @@ def score_skill_depth(c: dict) -> tuple[float, str]:
 
     depth_norm   = min(domain_depth / 5.0, 1.0)
     trap_penalty = min((buzzword_trap / max(len(skills), 1)) * 0.40, 0.30)
-    final = max(0.0, min(1.0, depth_norm - trap_penalty))
-    note  = f"domain_depth:{domain_depth:.2f},buzzwords:{buzzword_trap},penalty:{trap_penalty:.2f}"
-    return final, note
+    return max(0.0, min(1.0, depth_norm - trap_penalty))
 
 
-def score_engagement(c: dict) -> tuple[float, str]:
-    """Availability and behavioral signals. Kept at 15% weight intentionally."""
+def score_engagement(c: dict) -> float:
+    """
+    Uses redrob_signals fields:
+      last_active_date, open_to_work_flag, recruiter_response_rate,
+      github_activity_score, notice_period_days, willing_to_relocate
+    """
     s = c.get("redrob_signals", {})
     p = c.get("profile", {})
 
@@ -217,7 +290,7 @@ def score_engagement(c: dict) -> tuple[float, str]:
                 else 0.65 if days_inactive <= 60 else 0.45 if days_inactive <= 90
                 else 0.25 if days_inactive <= 180 else 0.10)
 
-    otw_s = 1.0 if s.get("open_to_work_flag") else 0.40   # not 0.0 — soft signal only
+    otw_s = 1.0 if s.get("open_to_work_flag") else 0.40
 
     rrr_s = min((s.get("recruiter_response_rate", 0) or 0) / 0.70, 1.0)
 
@@ -227,18 +300,17 @@ def score_engagement(c: dict) -> tuple[float, str]:
 
     notice   = s.get("notice_period_days", 60) or 60
     notice_s = (1.0 if notice <= 15 else 0.85 if notice <= 30 else 0.65 if notice <= 60
-                else 0.45 if notice <= 90 else 0.25)   # soft preference, NOT a hard filter
+                else 0.45 if notice <= 90 else 0.25)
 
     loc   = _lower(p.get("location", ""))
     reloc = s.get("willing_to_relocate", False)
     loc_s = (1.0 if any(pl in loc for pl in PREFERRED_LOCATIONS)
              else 0.75 if reloc else 0.55)
 
-    final = (active_s*0.30 + otw_s*0.20 + rrr_s*0.20 +
-             gh_s*0.15 + notice_s*0.10 + loc_s*0.05)
-    note  = (f"inactive:{days_inactive:.0f}d,otw:{s.get('open_to_work_flag')},"
-             f"rrr:{s.get('recruiter_response_rate',0):.2f},gh:{gh},notice:{notice}d")
-    return max(0.0, min(1.0, final)), note
+    return max(0.0, min(1.0, (
+        active_s*0.30 + otw_s*0.20 + rrr_s*0.20 +
+        gh_s*0.15 + notice_s*0.10 + loc_s*0.05
+    )))
 
 
 def composite(sem, ship, career, engage) -> float:
@@ -246,25 +318,32 @@ def composite(sem, ship, career, engage) -> float:
 
 
 # ═══════════════════════════════════════════════════════════════
-#  TIERED RE-RANKING
-#  Top 1-10:   Strictest — high shipper AND semantic
-#  Top 11-50:  Balanced — high composite
-#  Top 51-100: Broader — composite + engagement
+#  TIERED RE-RANKING (deterministic — every sort tie-breaks on candidate_id)
 # ═══════════════════════════════════════════════════════════════
 
 def tier_rerank(scored: list) -> list:
     tier1 = [r for r in scored
-             if r["scores"]["shipper"] >= 0.55 and r["scores"]["semantic"] >= 0.45]
-    tier2 = [r for r in scored if r not in tier1 and r["composite"] >= 0.45]
-    tier3 = [r for r in scored if r not in tier1 and r not in tier2]
+             if r["shipper"] >= 0.55 and r["semantic"] >= 0.45]
+    tier1_ids = {r["candidate_id"] for r in tier1}
 
+    tier2 = [r for r in scored
+             if r["candidate_id"] not in tier1_ids and r["composite"] >= 0.45]
+    tier2_ids = {r["candidate_id"] for r in tier2}
+
+    tier3 = [r for r in scored
+             if r["candidate_id"] not in tier1_ids and r["candidate_id"] not in tier2_ids]
+
+    # Every sort key includes candidate_id as a tie-breaker so identical
+    # scores always resolve to the same order across repeated runs.
     tier1.sort(key=lambda r: (
-        r["scores"]["shipper"]*0.40 + r["scores"]["semantic"]*0.40 +
-        r["scores"]["skill_depth"]*0.20
-    ), reverse=True)
-    tier2.sort(key=lambda r: r["composite"], reverse=True)
-    tier3.sort(key=lambda r: r["composite"]*0.70 + r["scores"]["engagement"]*0.30,
-               reverse=True)
+        -(r["shipper"]*0.40 + r["semantic"]*0.40 + r["skill_depth"]*0.20),
+        r["candidate_id"]
+    ))
+    tier2.sort(key=lambda r: (-r["composite"], r["candidate_id"]))
+    tier3.sort(key=lambda r: (
+        -(r["composite"]*0.70 + r["engagement"]*0.30),
+        r["candidate_id"]
+    ))
 
     final, seen = [], set()
     for r in tier1 + tier2 + tier3:
@@ -278,53 +357,25 @@ def tier_rerank(scored: list) -> list:
 
 
 # ═══════════════════════════════════════════════════════════════
-#  CSV WRITER
+#  CSV WRITER — exactly 4 columns as requested
 # ═══════════════════════════════════════════════════════════════
 
 def write_top100_csv(ranked: list, path: str):
-    fieldnames = [
-        "rank", "candidate_id",
-        "composite_score", "semantic_score", "shipper_score",
-        "career_score", "skill_depth_score", "engagement_score",
-        "llm_reason",
-        "current_title", "current_company", "years_of_experience", "location",
-        "notice_period_days", "open_to_work", "github_activity_score",
-        "shipper_debug", "career_debug", "skill_debug", "engage_debug",
-    ]
+    fieldnames = ["candidate_id", "rank", "score", "reasoning"]
     with open(path, "w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+        w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for rank, r in enumerate(ranked, 1):
-            c  = r["candidate"]
-            p  = c.get("profile", {})
-            s  = c.get("redrob_signals", {})
-            sc = r["scores"]
             w.writerow({
-                "rank"                : rank,
-                "candidate_id"        : r["candidate_id"],
-                "composite_score"     : round(r["composite"], 4),
-                "semantic_score"      : round(sc["semantic"], 4),
-                "shipper_score"       : round(sc["shipper"], 4),
-                "career_score"        : round(sc["career"], 4),
-                "skill_depth_score"   : round(sc["skill_depth"], 4),
-                "engagement_score"    : round(sc["engagement"], 4),
-                "llm_reason"          : r.get("llm_reason", ""),
-                "current_title"       : p.get("current_title", ""),
-                "current_company"     : p.get("current_company", ""),
-                "years_of_experience" : p.get("years_of_experience", ""),
-                "location"            : p.get("location", ""),
-                "notice_period_days"  : s.get("notice_period_days", ""),
-                "open_to_work"        : s.get("open_to_work_flag", ""),
-                "github_activity_score": s.get("github_activity_score", ""),
-                "shipper_debug"       : r["debug"]["shipper"],
-                "career_debug"        : r["debug"]["career"],
-                "skill_debug"         : r["debug"]["skill"],
-                "engage_debug"        : r["debug"]["engage"],
+                "candidate_id": r["candidate_id"],
+                "rank"        : rank,
+                "score"       : round(r["composite"], 4),
+                "reasoning"   : r.get("llm_reason", ""),
             })
 
 
 # ═══════════════════════════════════════════════════════════════
-#  MAIN — fast, CPU-only, no models
+#  MAIN — fast, CPU-only, no models, fully deterministic
 # ═══════════════════════════════════════════════════════════════
 
 def run():
@@ -335,8 +386,7 @@ def run():
     print(f"\n  Loading {INPUT_PATH}...")
     with open(INPUT_PATH, "r", encoding="utf-8") as f:
         top300 = json.load(f)
-    print(f"  Loaded {len(top300):,} pre-ranked candidates.")
-    print(f"  (semantic_score and llm_reason were precomputed in step1)\n")
+    print(f"  Loaded {len(top300):,} pre-ranked candidates.\n")
 
     print("  Scoring on redrob_signals + career data (pure Python, no model)...")
     scored = []
@@ -344,37 +394,30 @@ def run():
         sem_score = c.get("_semantic_score", 0.0)
         llm_reason = c.get("_llm_reason", "")
 
-        ship_s,   ship_d   = score_shipper(c)
-        career_s, career_d = score_career(c)
-        skill_s,  skill_d  = score_skill_depth(c)
-        engage_s, engage_d = score_engagement(c)
-        comp = composite(sem_score, ship_s, career_s, engage_s)
+        ship_s   = score_shipper(c)
+        career_s = score_career(c)
+        skill_s  = score_skill_depth(c)
+        engage_s = score_engagement(c)
+        comp     = composite(sem_score, ship_s, career_s, engage_s)
 
         scored.append({
             "candidate_id": c["candidate_id"],
-            "candidate"   : c,
             "composite"   : comp,
+            "semantic"    : round(sem_score, 4),
+            "shipper"     : round(ship_s, 4),
+            "career"      : round(career_s, 4),
+            "skill_depth" : round(skill_s, 4),
+            "engagement"  : round(engage_s, 4),
             "llm_reason"  : llm_reason,
-            "scores": {
-                "semantic"   : round(sem_score, 4),
-                "shipper"    : round(ship_s, 4),
-                "career"     : round(career_s, 4),
-                "skill_depth": round(skill_s, 4),
-                "engagement" : round(engage_s, 4),
-            },
-            "debug": {
-                "shipper": ship_d, "career": career_d,
-                "skill":   skill_d, "engage": engage_d,
-            },
         })
 
-    scored.sort(key=lambda r: r["composite"], reverse=True)
+    # Deterministic primary sort: composite desc, tie-break candidate_id asc
+    scored.sort(key=lambda r: (-r["composite"], r["candidate_id"]))
     print(f"  Scored {len(scored):,} candidates.\n")
 
     print("  Applying tiered re-ranking...")
     reranked = tier_rerank(scored)
-    tier1_count = sum(1 for r in reranked
-                      if r["scores"]["shipper"] >= 0.55 and r["scores"]["semantic"] >= 0.45)
+    tier1_count = sum(1 for r in reranked if r["shipper"] >= 0.55 and r["semantic"] >= 0.45)
     print(f"    Tier 1 (strict shipper+semantic) : {tier1_count}")
     print(f"    Tier 2+3 (balanced/broader)      : {len(reranked)-tier1_count}\n")
 
@@ -397,16 +440,15 @@ def run():
 ╠══════════════════════════════════════════════════════════════╣
   Input (top semantic pool) : {len(top300):,}
   Final output              : {len(final_top)} (no duplicates)
+  CSV columns                : candidate_id, rank, score, reasoning
+  Determinism                : sorts tie-break on candidate_id —
+                                re-running on same input gives same file
   ────────────────────────────────────────────────────────────
   TOP 10:""")
     for i, r in enumerate(final_top[:10], 1):
-        p  = r["candidate"]["profile"]
-        sc = r["scores"]
-        print(f"  #{i:>2}  {r['composite']:.3f}  "
-              f"{p.get('current_title','')} @ {p.get('current_company','')}  "
-              f"({p.get('years_of_experience',0)}y)")
-        print(f"       sem={sc['semantic']:.2f} ship={sc['shipper']:.2f} "
-              f"career={sc['career']:.2f} engage={sc['engagement']:.2f}")
+        print(f"  #{i:>2}  {r['composite']:.3f}  {r['candidate_id']}")
+        print(f"       sem={r['semantic']:.2f} ship={r['shipper']:.2f} "
+              f"career={r['career']:.2f} engage={r['engagement']:.2f}")
         if r.get("llm_reason") and "skipped" not in r["llm_reason"]:
             print(f"       → {r['llm_reason']}")
     print(f"""  ────────────────────────────────────────────────────────────
