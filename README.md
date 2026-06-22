@@ -8,6 +8,9 @@ git remote add origin https://github.com/Dhruvi-45/data_ai.git
 git push -u origin main
 
 
+!pip install groq
+!pip install sentence-transformers faiss-gpu google-genai --quiet
+
 
 
 
@@ -17,7 +20,7 @@ git push -u origin main
 
 git status
 git add .
-git commit -m "embeddings"
+git commit -m "dependencies"
 git push
 
 
