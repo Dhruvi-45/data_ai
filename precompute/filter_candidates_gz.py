@@ -48,9 +48,9 @@ import datetime
 from pathlib import Path
 
 # ── CONFIGURE THESE ──────────────────────────────────────────────────────────
-INPUT_PATH          = "candidates.jsonl.gz"     # ← your .gz file path
-KEPT_OUTPUT_PATH    = "kept_candidates.json"    # ← candidates who passed
-REMOVED_OUTPUT_PATH = "removed_candidates.json" # ← candidates who failed
+INPUT_PATH          = "../data/candidates.jsonl.gz"     # ← your .gz file path
+KEPT_OUTPUT_PATH    = "../outputs/kept_candidates.json"    # ← candidates who passed
+REMOVED_OUTPUT_PATH = "../outputs/removed_candidates.json" # ← candidates who failed
 # ─────────────────────────────────────────────────────────────────────────────
 
 

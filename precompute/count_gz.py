@@ -2,7 +2,7 @@ import gzip
 
 # Check the COMPRESSED .jsonl.gz file directly
 count = 0
-with gzip.open('candidates.jsonl.gz', 'rt', encoding='utf-8') as f:
+with gzip.open('../data/candidates.jsonl.gz', 'rt', encoding='utf-8') as f:
     for line in f:
         if line.strip():
             count += 1
