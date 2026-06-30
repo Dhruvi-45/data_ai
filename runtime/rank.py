@@ -34,7 +34,11 @@ from datetime import datetime, date
 #  CONFIG
 # ═══════════════════════════════════════════════════════════════
 
-INPUT_PATH  = "../outputs/top300_with_reasons.json"
+# INPUT_PATH  = "../outputs/top300_with_reasons.json"
+# Replace line 21 in runtime/rank.py with this if it throws a FileNotFoundError inside the function:
+import os
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+INPUT_PATH = os.path.join(os.path.dirname(CURRENT_DIR), "outputs", "top300_with_reasons.json")
 OUTPUT_DIR  = "../outputs"
 TOP_FINAL   = 100
 

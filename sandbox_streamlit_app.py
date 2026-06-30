@@ -63,9 +63,9 @@ from runtime.rank import run as run_ranking_pipeline
 st.title("🏆 Hackathon Candidate Ranking Sandbox")
 st.write("This sandbox uses precomputed Groq LLM reasons and embeddings to instantly rank candidates.")
 
-# FIX 1: Corrected filename (removed underscore from top300) 
-# and built absolute path relative to the repository layout
-artifacts_json = os.path.join(os.path.dirname(SCRIPT_DIR), "outputs", "top300_with_reasons.json")
+# FIX: Build the path starting directly from SCRIPT_DIR (which is /mount/src/data_ai)
+# This perfectly maps to /mount/src/data_ai/outputs/top300_with_reasons.json
+artifacts_json = os.path.join(SCRIPT_DIR, "outputs", "top300_with_reasons.json")
 
 if os.path.exists(artifacts_json):
     st.success("✅ Precomputed artifacts loaded successfully!")
@@ -73,13 +73,12 @@ if os.path.exists(artifacts_json):
     if st.button("Run Heuristic Ranking Engine"):
         with st.spinner("Applying heuristics..."):
             try:
-                # FIX 2: Call the function without arguments, since 'run()' in rank.py 
-                # takes no parameters and reads directly from the JSON.
+                # Call the ranking logic function from rank.py
                 ranked_data = run_ranking_pipeline() 
                 
                 st.write("### Final Ranked Candidates")
                 
-                # Convert the returned list of dicts into a clean Pandas DataFrame for Streamlit
+                # Convert the returned list of dicts into a clean Pandas DataFrame
                 df_final = pd.DataFrame(ranked_data)
                 st.dataframe(df_final)
                 
