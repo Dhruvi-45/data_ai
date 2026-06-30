@@ -34,8 +34,8 @@ from datetime import datetime, date
 #  CONFIG
 # ═══════════════════════════════════════════════════════════════
 
-INPUT_PATH  = "/content/drive/MyDrive/redrob/outputs/top300_with_reasons.json"
-OUTPUT_DIR  = "/content/drive/MyDrive/redrob/outputs"
+INPUT_PATH  = "../outputs/top300_with_reasons.json"
+OUTPUT_DIR  = "../outputs"
 TOP_FINAL   = 100
 
 # Score weights (must sum to 1.0)

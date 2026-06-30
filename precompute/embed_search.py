@@ -48,7 +48,8 @@ import os, json, time, re
 import numpy as np
 from pathlib import Path
 from datetime import datetime, date
-
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 try:
     from sentence_transformers import SentenceTransformer
 except ImportError:
@@ -67,8 +68,8 @@ import torch
 #  CONFIG
 # ═══════════════════════════════════════════════════════════════
 
-INPUT_PATH  = "filtered_candidates.json"   # your ~20k filtered file
-OUTPUT_DIR  = "/content/drive/MyDrive/redrob/outputs"
+INPUT_PATH  = "../outputs/honeypot_filtered_candidates.json"   # your ~20k filtered file
+OUTPUT_DIR  = "../outputs"
 
 GROQ_API_KEY = ""   # paste here, or leave blank to use Colab Secrets
 GROQ_MODEL   = "llama-3.3-70b-versatile"   # strong free-tier model on Groq
@@ -395,14 +396,7 @@ def run():
         print("  ⚠  No GPU. Runtime → Change runtime type → T4 GPU")
 
     # ── API key ────────────────────────────────────────────────
-    api_key = GROQ_API_KEY
-    if not api_key:
-        try:
-            from google.colab import userdata
-            api_key = userdata.get("GROQ_API_KEY")
-            print("  API key: loaded from Colab secrets ✅")
-        except Exception:
-            api_key = os.environ.get("GROQ_API_KEY", "")
+    api_key = GROQ_API_KEY or os.environ.get("GROQ_API_KEY")
     if not api_key:
         print("  ⚠  No API key found. LLM reasoning will be skipped.")
     else:
