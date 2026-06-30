@@ -1,10 +1,13 @@
 import streamlit as st
 import pandas as pd
 import os
+import sys
 # Import the function from your existing rank.py
 # (Make sure rank.py is structured to be imported or run as a function)
-from runtime.rank import run_ranking_pipeline 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# CORRECT IMPORT: Import the main execution function 'run'
+from runtime.rank import run as run_ranking_pipeline
 st.title("🏆 Hackathon Candidate Ranking Sandbox")
 st.write("This sandbox uses precomputed Groq LLM reasons and embeddings to instantly rank candidates.")
 

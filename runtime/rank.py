@@ -455,6 +455,8 @@ def run():
   Output: {csv_path}      ← SUBMISSION FILE
 ╚══════════════════════════════════════════════════════════════╝
 """)
+    
+    return final_top
 
 
 if __name__ == "__main__":
