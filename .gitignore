@@ -1,4 +1,9 @@
 data
-outputs/
 .env
 .vscode
+/outputs/kept_candidates.json
+/outputs/removed_candidates.json
+/outputs/jd_embedding.npy
+/outputs/honeypot_candidates.json
+/outputs/honeypot_filtered_candidates.json
+/outputs/candidate_embeddings.npz
