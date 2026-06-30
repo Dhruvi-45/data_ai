@@ -80,6 +80,7 @@ if os.path.exists(artifacts_json):
                 
                 # Convert the returned list of dicts into a clean Pandas DataFrame
                 df_final = pd.DataFrame(ranked_data)
+                df_final.index = df_final.index + 1
                 st.dataframe(df_final)
                 
                 # Download button configuration
