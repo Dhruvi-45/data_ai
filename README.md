@@ -24,6 +24,31 @@ git commit -m "streamlit"
 git push
 
 
+
+
+
+
+pip install sentence-transformers faiss-gpu google-genai --quiet
+pip install groq
+py -3.10 -m pip install sentence-transformers faiss-cpu groq
+py -3.10 -m pip install sentence-transformers faiss-gpu groq
+py -3.10 -m pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
+
+
+
+
+py -3.10 -m pip install python-dotenv
+streamlit
+pandas
+numpy
+
+
+
+
+
+
+
+
 candidate-ranking/
 │
 ├── README.md                    # Approach explanation + how to run

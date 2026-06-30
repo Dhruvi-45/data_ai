@@ -1,13 +1,9 @@
-pip install sentence-transformers faiss-gpu google-genai --quiet
-pip install groq
-py -3.10 -m pip install sentence-transformers faiss-cpu groq
-py -3.10 -m pip install sentence-transformers faiss-gpu groq
-py -3.10 -m pip install torch --index-url https://download.pytorch.org/whl/cu121 --force-reinstall
-
-
-
-
-py -3.10 -m pip install python-dotenv
+sentence-transformers
+faiss-cpu
+google-genai
+groq
+python-dotenv
 streamlit
 pandas
 numpy
+torch --index-url https://download.pytorch.org/whl/cpu
