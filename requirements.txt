@@ -8,3 +8,6 @@ py -3.10 -m pip install torch --index-url https://download.pytorch.org/whl/cu121
 
 
 py -3.10 -m pip install python-dotenv
+streamlit
+pandas
+numpy
