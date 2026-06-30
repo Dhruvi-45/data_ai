@@ -2,11 +2,10 @@
 Google Colab Honeypot Filter
 
 Input:
-    kept_candidates.json
-
+    ../outputs/kept_candidates.json
 Outputs:
-    filtered_candidates.json
-    honeypot_candidates.json
+    ../outputs/honeypot_filtered_candidates.json
+    ../outputs/honeypot_candidates.json
 """
 
 import json
@@ -194,10 +193,10 @@ def save_json(data, filepath):
 # Main
 # ============================================================================
 
-INPUT_FILE = "kept_candidates.json"
+INPUT_FILE = "../outputs/kept_candidates.json"
 
-CLEAN_OUTPUT = "filtered_candidates.json"
-HONEYPOT_OUTPUT = "honeypot_candidates.json"
+CLEAN_OUTPUT = "../outputs/honeypot_filtered_candidates.json"
+HONEYPOT_OUTPUT = "../outputs/honeypot_candidates.json"
 
 print("=" * 60)
 print("HONEYPOT FILTER")
