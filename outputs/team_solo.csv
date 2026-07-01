@@ -1,0 +1,101 @@
+candidate_id,rank,score,reasoning
+CAND_0046064,1,0.8987,Built recruiter label-based data curation pipeline at Salesforce.
+CAND_0039754,2,0.8747,Owned end-to-end ranking pipeline using Pinecone retrieval and XGBoost re-scoring at Meta.
+CAND_0080766,3,0.8665,Designed offline experimentation environment and feature-engineering pipeline at Salesforce.
+CAND_0055905,4,0.8921,Owned semantic search system at an internal corpus of 35M+ items.
+CAND_0077337,5,0.8923,Built a production recommendation system at a marketplace product in 5 months.
+CAND_0094759,6,0.8458,Led migration to embedding-based search at Meta across a 30M+ corpus.
+CAND_0046525,7,0.8911,Led migration to embedding-based search at LinkedIn across 30M+ candidates.
+CAND_0033861,8,0.8211,"Built data curation pipeline at Mad Street Den, generating 200K high-quality preference pairs."
+CAND_0030953,9,0.7811,Trained ranking models using XGBoost and LightGBM for Nykaa's discovery feed.
+CAND_0086151,10,0.7268,Evolving e-commerce search ranking at Wysa from hand-tuned to learning-to-rank.
+CAND_0049896,11,0.7377,Built document ingestion pipeline using OpenAI embeddings and Pinecone at Unacademy.
+CAND_0005649,12,0.722,Developed semantic search for Sarvam AI's internal knowledge base.
+CAND_0011687,13,0.7141,Owned Pinecone retrieval and XGBoost re-scoring at a recommendations-heavy product.
+CAND_0031593,14,0.7093,Evolved e-commerce search ranking layer at Genpact AI using learning-to-rank models.
+CAND_0069905,15,0.7069,Developed semantic search for Sarvam AI's internal knowledge base.
+CAND_0053591,16,0.7016,Trained ranking models using XGBoost and LightGBM for Ola's discovery feed.
+CAND_0088025,17,0.6974,Owned end-to-end ranking pipeline using Pinecone and BGE-large at a consumer product.
+CAND_0083307,18,0.6966,Built Pinecone-based document ingestion pipeline with OpenAI embeddings at CRED.
+CAND_0024147,19,0.6943,"Built recommendation-style features at a mid-stage startup, similar to Ola."
+CAND_0062247,20,0.6932,Developed semantic search for Google's internal knowledge base of ~500K documents.
+CAND_0064326,21,0.6925,Evolved e-commerce search ranking layer to a learning-to-rank model at Sarvam AI.
+CAND_0006567,22,0.6905,"Owned search and discovery experience at Glance, from content representation to relevant results."
+CAND_0043860,23,0.69,"Built recommendation features at a mid-stage startup, similar to Aganitha."
+CAND_0073504,24,0.6897,Churn model at PolicyBazaar is now used by the retention team.
+CAND_0007596,25,0.6881,"Built recommendation features at a mid-stage startup, similar to Flipkart's systems."
+CAND_0020991,26,0.6872,"Worked on production-side at PhonePe, with modeling work secondary."
+CAND_0004402,27,0.6869,"Built recommendation-style features at a mid-stage startup, similar to Yellow.ai."
+CAND_0028422,28,0.6852,The churn model at Yellow.ai is now used by the retention team.
+CAND_0033987,29,0.6812,"Ran reinforcement learning experiments for dynamic pricing at Paytm, but they didn't reach production."
+CAND_0099401,30,0.6806,Built a content recommendation system at Dream11 combining collaborative filtering with ranking.
+CAND_0095528,31,0.68,Built Netflix's content recommendation system combining collaborative filtering with content-based ranking.
+CAND_0098952,32,0.6795,"Ran reinforcement learning experiments for dynamic pricing at CRED, but they didn't reach production."
+CAND_0017178,33,0.6766,"Built recommendation features at Glance, a mid-stage startup."
+CAND_0091534,34,0.6765,"Owned e-commerce search product's ranking layer at Flipkart, evolving it to a learning-to-rank model."
+CAND_0099751,35,0.6761,"Built recommendation-style features at a mid-stage startup, specifically at Mad Street Den and Observe.AI."
+CAND_0080344,36,0.6759,"Built recommendation features at Verloop.io, a mid-stage startup, with lighter weight systems."
+CAND_0068932,37,0.6757,"Built recommendation features at a mid-stage startup, lighter than FAANG ranking systems."
+CAND_0049978,38,0.6756,"Built recommendation-style features at a mid-stage startup, specifically at Sarvam AI."
+CAND_0091745,39,0.6752,"Ran reinforcement learning experiments for dynamic pricing at Swiggy, but they didn't reach production."
+CAND_0076251,40,0.6745,Developed semantic search for Haptik's internal knowledge base.
+CAND_0086893,41,0.6735,"Built recommendation features at a mid-stage startup, similar to Unacademy."
+CAND_0053527,42,0.6722,"Built recommendation features at a mid-stage startup, similar to Verloop.io."
+CAND_0046526,43,0.6719,"Built recommendation-style features at a mid-stage startup, similar to Ola and Flipkart systems."
+CAND_0058426,44,0.671,"Churn model at Wysa informs retention efforts, albeit with limited productionization involvement."
+CAND_0072020,45,0.6709,"Ran reinforcement learning experiments for dynamic pricing at Nykaa, but they didn't reach production."
+CAND_0006557,46,0.6699,Evolved e-commerce search product's ranking layer at Paytm to a learning-to-rank model.
+CAND_0010770,47,0.6682,Trained ranking models using XGBoost and LightGBM for Aganitha's discovery feed.
+CAND_0010149,48,0.6672,"Churn model at Glance informs retention team decisions, albeit with limited productionization involvement."
+CAND_0023583,49,0.6631,"Built recommendation features at Yellow.ai, similar to lighter weight ranking systems."
+CAND_0092255,50,0.6628,The churn model at InMobi is now used by the retention team.
+CAND_0068012,51,0.6611,The churn model at Vedantu is now used by the retention team.
+CAND_0023215,52,0.6603,"Built recommendation features at a mid-stage startup, specifically at Verloop.io."
+CAND_0031397,53,0.66,The churn model at Observe.AI is now used by the retention team.
+CAND_0067535,54,0.6593,"Worked on production-side at Locobuzz, with modeling secondary."
+CAND_0070485,55,0.659,Developed semantic search for Saarthi.ai's internal knowledge base.
+CAND_0042100,56,0.6587,Evolved Netflix's e-commerce search ranking layer to a learning-to-rank model.
+CAND_0057529,57,0.6586,"Worked on production-side at Locobuzz, with modeling secondary."
+CAND_0000981,58,0.6578,"Built recommendation features at a mid-stage startup, similar to Wysa's production environment."
+CAND_0082291,59,0.6573,"Ran reinforcement learning experiments for dynamic pricing at Meesho, but they didn't reach production."
+CAND_0074123,60,0.6565,"Ran reinforcement learning experiments for dynamic pricing at Vedantu, but they didn't make it to production."
+CAND_0007411,61,0.6558,Owned end-to-end ranking pipeline using Pinecone retrieval and XGBoost re-scoring at Amazon.
+CAND_0040178,62,0.655,"Worked on production-side at Meesho, with modeling work secondary."
+CAND_0019480,63,0.6548,Trained ranking models using XGBoost and LightGBM for Meesho's discovery feed.
+CAND_0088354,64,0.6546,"Built recommendation features at a mid-stage startup, similar to OpenSearch systems."
+CAND_0088049,65,0.6543,"Ran reinforcement learning experiments for dynamic pricing at Freshworks, but they didn't make it to production."
+CAND_0015967,66,0.6541,"Built recommendation-style features at a mid-stage startup, similar to Razorpay."
+CAND_0001930,67,0.6515,"Built recommendation features at a mid-stage startup, lighter than FAANG ranking systems."
+CAND_0059795,68,0.6514,"Worked on production-side at Locobuzz, with modeling secondary."
+CAND_0008049,69,0.6509,"Built recommendation features at a mid-stage startup, similar to Niramai."
+CAND_0003609,70,0.6504,"Worked closely with senior data scientists at PharmEasy, InMobi, and Sarvam AI."
+CAND_0063097,71,0.6498,"Ran reinforcement learning experiments for dynamic pricing at Flipkart, but they didn't reach production."
+CAND_0049217,72,0.6484,"Built recommendation features at a mid-stage startup, lighter than FAANG ranking systems."
+CAND_0007009,73,0.648,Built document ingestion pipeline using OpenAI embeddings and Pinecone at Wysa.
+CAND_0085851,74,0.6465,"Built recommendation features at a mid-stage startup, similar to Sarvam AI or Saarthi.ai."
+CAND_0091890,75,0.645,Churn model at Verloop.io is now used by the retention team.
+CAND_0060835,76,0.6446,Ran reinforcement learning experiments for dynamic pricing at Sarvam AI.
+CAND_0060303,77,0.6445,"Ran reinforcement learning experiments for dynamic pricing at Zomato, but they didn't reach production."
+CAND_0017093,78,0.6443,"Ran reinforcement learning experiments for dynamic pricing at Zoho, but they didn't reach production."
+CAND_0024990,79,0.6437,The churn model at Zoho is now used by the retention team.
+CAND_0001151,80,0.6431,"Built recommendation features at a mid-stage startup, similar to Aganitha."
+CAND_0066690,81,0.6422,"Ran reinforcement learning experiments for dynamic pricing at Freshworks, but they didn't reach production."
+CAND_0038099,82,0.6407,"Built recommendation features at a mid-stage startup, similar to Locobuzz."
+CAND_0001302,83,0.6397,"Churn model at Unacademy shows production impact, despite limited productionization role."
+CAND_0098217,84,0.6387,Built NLP pipelines with sklearn and transformer models at Glance.
+CAND_0073314,85,0.6381,"Ran reinforcement learning experiments for dynamic pricing at Paytm, but they didn't reach production."
+CAND_0003756,86,0.6375,"Built recommendation features at a mid-stage startup, similar to CRED and PolicyBazaar."
+CAND_0027723,87,0.6373,"Ran reinforcement learning experiments for dynamic pricing at Wysa, but they didn't reach production."
+CAND_0032887,88,0.6362,The churn model at Niramai is now used by the retention team.
+CAND_0002706,89,0.6353,"Ran reinforcement learning experiments for dynamic pricing at Zoho, but they didn't reach production."
+CAND_0078669,90,0.6348,"Ran reinforcement learning experiments for dynamic pricing at Vedantu, but they didn't reach production."
+CAND_0014440,91,0.6344,Evolving e-commerce search ranking at CRED with learning-to-rank models.
+CAND_0088385,92,0.6336,Ran reinforcement learning experiments for dynamic pricing at Swiggy.
+CAND_0065927,93,0.6335,"Built recommendation features at a mid-stage startup, similar to Krutrim's system."
+CAND_0015097,94,0.6328,The churn model at Zoho is now used by the retention team.
+CAND_0086657,95,0.6316,"Built recommendation features at a mid-stage startup, similar to Glance."
+CAND_0022463,96,0.6313,"Ran reinforcement learning experiments for dynamic pricing at Zomato, but they didn't reach production."
+CAND_0061156,97,0.6313,"Built recommendation-style features at a mid-stage startup, specifically at Sarvam AI."
+CAND_0052431,98,0.6311,Ran reinforcement learning experiments for dynamic pricing at Swiggy.
+CAND_0013393,99,0.6309,"Built recommendation features at a mid-stage startup, similar to ranking systems."
+CAND_0068892,100,0.6308,"The churn model at Wipro is now used by the retention team, focused on modeling."
