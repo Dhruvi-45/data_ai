@@ -434,7 +434,7 @@ def run():
     if len(deduped) < len(reranked):
         print(f"  Removed {len(reranked)-len(deduped)} duplicate(s).\n")
 
-    csv_path = out / "top100_final.csv"
+    csv_path = out / "team_solo.csv"
     write_top100_csv(final_top, str(csv_path))
 
     elapsed = time.time() - t0

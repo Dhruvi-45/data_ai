@@ -1,3 +1,17 @@
+# 1. Uninstall the current CPU-only version
+pip uninstall torch torchvision torchaudio -y
+
+# 2. Install the CUDA-enabled version (Adjust cu121/cu124 based on your CUDA version if needed, but 12.1/12.4 are standard)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+
+
+
+
+
+
+
+
 "# data_ai" 
 echo "# data_ai" >> README.md
 git init
@@ -7,7 +21,7 @@ git branch -M main
 git remote add origin https://github.com/Dhruvi-45/data_ai.git
 git push -u origin main
 
-
+python -m pip install faiss-gpu
 !pip install groq
 !pip install sentence-transformers faiss-gpu google-genai --quiet
 

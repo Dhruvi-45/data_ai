@@ -24,7 +24,7 @@ github_repo: "https://github.com/Dhruvi-45/data_ai"
 
 
 
-sandbox_link: "https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"
+sandbox_link: "https://dataai-fvegafr8mg92sfxwp33ins.streamlit.app/"
 
 
 
@@ -36,50 +36,57 @@ reproduce_command: "python rank.py --candidates ./candidates.jsonl --out ./submi
 
 
 compute:
-  platform: "MacBook Pro M2"                    # Or: "AWS EC2 c5.4xlarge", "Local Linux box", etc.
-  cpu_cores: 8                                  # Number of CPU cores used
-  ram_gb: 16                                    # Available RAM in GB
-  python_version: "3.11.4"                      # python --version
-  os: "macOS 14.2"                              # Or "Ubuntu 22.04 LTS", etc.
-  uses_gpu_for_inference: false                 # Must be false — see compute constraints
-  has_network_during_ranking: false             # Must be false — no API calls during ranking
-  pre_computation_required: false               # true if you pre-compute embeddings or train models offline
-  pre_computation_time_minutes: 0               # Approximate, if applicable
+  platform: "HP-VICTUS"                   
+  cpu_cores: 8                                  
+  ram_gb: 16                                    
+  python_version: "3.11.4"                     
+  os: "windows-11"                              
+  uses_gpu_for_inference: false               
+  has_network_during_ranking: false          
+  pre_computation_required: true               
+  pre_computation_time_minutes: approx 30 minutes    
 
 
 ai_tools_used:
-  - "Claude"        # e.g. for architecture discussion, code review
-  - "Gemini"  # e.g. for autocomplete
-  # Other options: "ChatGPT", "Cursor", "Gemini", "Codeium", "Other", "None"
+  - "Claude"       
+  - "Gemini"  
+  
 
 ai_usage_summary: |
-  Briefly describe how AI tools were used. Examples:
-  - "Used Claude for code review and architectural discussion. Used Copilot for autocomplete.
-     No candidate data was fed to any LLM."
-  - "Used ChatGPT to debug Python issues and Cursor for refactoring."
-  - "No AI tools used."
+  ai_usage_summary: |
+  Our team utilized Claude and Gemini as AI co-pilots throughout the project lifecycle:
+  - Ideation & Concept: Brainstormed core features, refined the project scope, and validated use cases.
+  - Code Production: Generated modular boilerplate code and accelerated full-stack component development.
+  - Debugging & Optimization: Troubleshooted runtime errors, analyzed stack traces, and optimized performance.
+  - Presentation Generation: Structured the narrative flow and drafted content outlines for our final PPT pitch deck.
 
 
 
 
 
 methodology_summary: |
-  ≤200 word summary of your approach. Strongly recommended.
+  1. Data Ingestion & Algorithmic Screening (filter_candidates_gz.py):
+     The pipeline ingests a compressed dataset of 100,000 candidate profiles (`candidates.jsonl.gz`) and streams them through a prioritized heuristic screening system to separate qualified profiles from noise. The script divides the pool into passed entries (`kept_candidates.json`) and logged disqualifications (`removed_candidates.json`) using four main filtering metrics:
+     - Consulting-Only Filtration: Disqualifies candidates whose entire career history is confined strictly to traditional IT consulting firms (e.g., TCS, Infosys, Wipro, Accenture) to prioritize product-engineering experience.
+     - Non-Technical Role Screening: Evaluates the candidate's active position to eliminate non-tech profiles. To safeguard individuals who have successfully transitioned into engineering, a candidate is disqualified only if their current job title explicitly matches non-tech domains (e.g., marketing, HR, logistics) AND they have held that role for 18 months or more.
+     - Pure Research Elimination: Evaluates academic and industry roles to isolate candidates with an exclusively academic track record. It disqualifies individuals if 60% or more of their historical roles match research-only markers (e.g., PhD, Postdoc, Research Scientist) unless explicit, verifiable production-engineering signals (e.g., APIs, pipeline building, MLOps, deployment) are detected in their descriptions.
+     - Synthetic AI Wrapper Screening ("Hungry" / Shallow AI): Flags superficial AI profiles trying to over-leverage basic API integrations. It screens candidates who list both LangChain and OpenAI signatures, disqualifying them if their cumulative recent application work totals less than 12 months within a 24-month window. However, an integrated safety check prevents false negatives: if a candidate possesses foundational pre-LLM machine learning skills (e.g., BERT, vector search, XGBoost, Information Retrieval) anywhere in their career history, they are automatically preserved regardless of recent framework metrics.
 
-  Example:
-  "Rule-based ranker with explicit reasoning capture. Five scoring components
-  (skills, title+career, experience years, location, education) combined with
-  a multiplicative behavioral-signal modifier. The title component is the
-  decisive signal against keyword-stuffer traps; an endorsement-and-duration
-  trust multiplier on skills catches lazy keyword stuffing. Runtime is ~10
-  seconds for 50K candidates on CPU."
+
+  2. Synthetic Integrity & Anomaly Verification (Honeypot Filter):
+     The screened subset (`kept_candidates.json`) is passed to an algorithmic integrity verification script to trap system-planted honeypots and structurally corrupt data. The script applies targeted cross-field validation rules to bifurcate verified talent into `honeypot_filtered_candidates.json` while isolating anomalous entries into `honeypot_candidates.json` based on four primary anti-fraud criteria:
+     - Financial Data Inversion (`INVERTED_SALARY`): Flags profiles exhibiting programmatic anomalies where the stated minimum expected salary parameter logically exceeds the maximum expected range in INR.
+     - Temporal Education Overlap (`EDU_OVERLAP`): Evaluates concurrent enrollment records by comparing start and end year boundaries across multiple entries in the education history block, trapping synthetic timelines where separate degree durations intersect.
+     - Contextual Role Mismatch (`DESC_TITLE_MISMATCH`): Isolates structural discontinuities within career histories by flagging jobs whose textual description bodies heavily index for mechanical hardware engineering keywords (e.g., SolidWorks, Creo, ANSYS), yet lack matching engineering titles.
+     - Experience-to-Skill Duration Discrepancy (`SKILL_EXCEEDS_CAREER`): Compares cumulative career timeline months against single-skill domain durations. Profiles are instantly classified as anomalous honeypots if individual skill expertise metrics exceed the total mathematical duration of their entire career history by more than a 3-month buffer.
+
 
 
 
 
 declarations:
-  read_submission_spec: true        # I have read submission_spec.md in full
-  code_is_original_work: true       # My code is my team's original work (using AI as a tool is fine)
-  no_collusion: true                # I have not coordinated my submission with other teams
-  honeypot_check_done: true        # OPTIONAL — set true if you explicitly checked for honeypots in your ranking
-  reproduction_tested: true         # I have tested that my reproduce_command runs end-to-end
+  read_submission_spec: true        
+  code_is_original_work: true       
+  no_collusion: true              
+  honeypot_check_done: true        
+  reproduction_tested: true        
