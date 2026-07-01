@@ -3,3 +3,4 @@ outputs/*.npz filter=lfs diff=lfs merge=lfs -text
 outputs/*.npy filter=lfs diff=lfs merge=lfs -text
 outputs/*.checkpoint filter=lfs diff=lfs merge=lfs -text
 outputs/*.json filter=lfs diff=lfs merge=lfs -text
+data/candidates.jsonl.gz filter=lfs diff=lfs merge=lfs -text
