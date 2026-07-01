@@ -61,3 +61,28 @@ streamlit
 pandas
 numpy
 
+
+
+
+
+
+├── data/
+│   ├── candidates.jsonl
+│   └── candidates.jsonl.gz         # Original 100k dataset
+├── precompute/
+│   ├── check_gpu.py
+│   ├── count_gz.py
+│   ├── count_jn.py
+│   ├── embed_search.py             # Generates .npz, .npy, .json artifacts
+│   ├── filter_candidates_gz.py     # Stage 1 filter (GZ -> kept_candidates)
+│   ├── honeypot_filter.py          # Stage 2 filter (kept -> honey_pot_candidates.json)
+│   └── jntogz.py
+├── runtime/
+│   ├── __init__.py
+│   └── rank.py                     # Final ranker script
+├── output/                         # (Or your designated output directory)
+├── .gitattributes                  # Git LFS tracking file
+├── requirements.txt                # Dependencies list
+├── run_all.sh                      # End-to-end pipeline script
+├── submission_metadata.yaml        # Required hackathon metadata
+└── README.md                       # This file
