@@ -79,8 +79,34 @@ methodology_summary: |
      - Temporal Education Overlap (`EDU_OVERLAP`): Evaluates concurrent enrollment records by comparing start and end year boundaries across multiple entries in the education history block, trapping synthetic timelines where separate degree durations intersect.
      - Contextual Role Mismatch (`DESC_TITLE_MISMATCH`): Isolates structural discontinuities within career histories by flagging jobs whose textual description bodies heavily index for mechanical hardware engineering keywords (e.g., SolidWorks, Creo, ANSYS), yet lack matching engineering titles.
      - Experience-to-Skill Duration Discrepancy (`SKILL_EXCEEDS_CAREER`): Compares cumulative career timeline months against single-skill domain durations. Profiles are instantly classified as anomalous honeypots if individual skill expertise metrics exceed the total mathematical duration of their entire career history by more than a 3-month buffer.
+  
 
+  3. GPU-Accelerated Vectorization & Contextual Synthesis (embed_search.py):
+     The clean candidate dataset (`honeypot_filtered_candidates.json`) is ingested by `embed_search.py` to transition unstructured text into a dense semantic space. The execution flow implements a high-throughput hybrid architecture across three core execution phases:
 
+     - Technical Domain Gating: Prior to executing embedding calculations, the script applies a strict, programmatic domain filter (`is_technical_candidate`). Candidates are completely pruned from downstream processing if their current title, historical titles, or platform skill assessments map to non-technical disciplines (e.g., HR, marketing, procurement) or distinct physical engineering branches (e.g., civil, mechanical), preventing false-positive semantic ranking.
+     
+     - Local GPU Vectorization (Dense Search): The remaining candidate profiles are flattened into granular career summaries. Operating locally on our host machine's dedicated NVIDIA GeForce RTX GPU via CUDA acceleration, the script utilizes the `BAAI/bge-small-en-v1.5` transformer model to map candidates and a 4-facet Job Description array into a unified 384-dimensional vector space. Similarity indexing is handled locally using `faiss-gpu`, executing a maximum similarity search across all four JD facets to harvest the top 300 candidates with complete mathematical determinism.
+     
+     - Dynamic Contextual Synthesis (Groq API): The top 300 candidates are handed off to an LLM reasoning engine powered by the `llama-3.3-70b-versatile` model over the Groq API. The script features a strict adaptive pacing mechanism (~27 RPM with exponential backoff) to remain safely under free-tier rate limits. To enforce reasoning diversity, the prompt injects candidate-specific profile anchors (exact current roles, concrete skills, and cited work history sentences), forcing the LLM to output a unique, 25-word qualitative justification rather than generic templates. 
+     
+     The entire routine generates persistent binary vector weights (`jd_embedding.npy`, `candidate_embeddings.npz`) and a structured checkpointed dataset (`top300_with_reasons.json`) containing semantic scores and custom LLM descriptions, isolating the computationally expensive pipeline elements ahead of final ranking.
+
+  4. Lightweight Composite Scoring & Deterministic Tiered Re-Ranking (rank.py):
+     The precomputed candidate pool (`top300_with_reasons.json`) is processed by `rank.py`. Operating under a strict 5-minute execution constraint, this component bypasses heavy model initialization, neural network evaluation, and API communication, performing purely algebraic, high-efficiency evaluation routines on the host CPU:
+
+     - Rule-Based Scoring Framework: The script evaluates each profile across four distinct operational pillars, mapping them to normalized values before computing a weighted final score:
+       • Semantic Matching (35%): Evaluates the precomputed high-dimensional vector alignment score mapped in the previous phase.
+       • Shipped Product Verification (30%): Scans historical strings for technical shipping anchors (e.g., "live in production", "reduced latency", "throughput", "a/b testing") to filter out purely theoretical profiles, penalizes strictly academic profiles via an explicit researcher penalty, and assigns a product bonus for non-consulting tenure.
+       • Career Seniority & Technical Validation (20%): Applies an initial safety gate checking for core software engineering signals (capping non-technical deviations at a 0.15 score maximum). Valid profiles are mathematically evaluated against ideal tenure windows (5 to 9 Years of Experience) and average duration metrics.
+       • Platform & Candidate Engagement (15%): Evaluates live operational variables from the data framework—including inactivity timeframes, open-to-work flags, recruitment response rates, GitHub contribution bands, location matching, and notice period durations.
+
+     - Tiered Re-Ranking Architecture: To prevent minor floating-point fluctuations from altering the leaderboard position during automated evaluations, the system routes candidates through three priority tiers:
+       • Tier 1: Prioritizes elite technical shippers exhibiting strict product engineering metrics (Shipper Score >= 0.55 AND Semantic Score >= 0.45).
+       • Tier 2: Pools stable, well-rounded engineering talent displaying broad operational parity (Composite Score >= 0.45).
+       • Tier 3: Processes the remaining talent pool by balancing composite scores against candidate engagement fields.
+
+     - Strict Determinism & Artifact Export: To ensure absolute reproducibility under grading conditions, every internal Python sorting step enforces a secondary stable sort key mapped to the individual `candidate_id`. This prevents arbitrary memory layout sorting, yielding byte-identical results across subsequent runs. The top 100 uniquely deduplicated profiles are exported to a deployment artifact (`team_solo.csv`) structured with exactly four standardized columns: `candidate_id`, `rank`, `score`, and `reasoning`.
 
 
 
